@@ -1,1 +1,2 @@
 0 * * * * root /data/vhost/!!(*= $vhost *)!!/venv/bin/python /data/vhost/!!(*= $vhost *)!!/hooks/bin/regenerate-github-token
+0 * * * * !!(*= $user *)!! /data/vhost/!!(*= $vhost *)!!/hooks/bin/update-git-repos /data/vhost/!!(*= $vhost *)!!/repos

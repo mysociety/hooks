@@ -1,0 +1,14 @@
+#!/bin/bash
+
+DIR=$1
+
+if [ -z "$DIR" ]; then
+    echo "Missing directory"
+    exit 1
+fi
+
+for repo in $(ls "$DIR"); do
+    if [ -d "$DIR/$repo/.git" ]; then
+        (cd "$DIR/$repo" ; git fetch -q ; git checkout -q origin/master)
+    fi
+done
