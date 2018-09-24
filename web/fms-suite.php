@@ -219,7 +219,7 @@ function collect_data() {
         foreach ($list as $f) {
             $f = trim($f);
             if (!$f) continue;
-            preg_match('#^(.*?)/templates/web/([^/]*)/(.*)#', $f, $m);
+            preg_match("#^$dir/(.*?)/templates/web/([^/]*)/(.*)#", $f, $m);
             $file_to_cobrands[$m[3]][] = array("repo" => $m[1], "name" => $m[2]);
         }
     }
