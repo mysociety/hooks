@@ -213,7 +213,7 @@ function collect_data() {
     $file_to_cobrands = array();
     $cobrands = glob("$dir/*/templates/web/*");
     foreach ($cobrands as $cobrand) {
-        if ($cobrand == 'fixmystreet/templates/web/base') continue;
+        if ($cobrand == "$dir/fixmystreet/templates/web/base") continue;
         $list = `find $cobrand -type f`;
         $list = explode("\n", $list);
         foreach ($list as $f) {
