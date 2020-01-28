@@ -1,28 +1,32 @@
 <?php
 
-$conf_dir = dirname(__FILE__) . '/../conf';
+include_once 'fns.php';
 
-$CONFIG = parse_ini_file("$conf_dir/general.cfg", true);
-$secret = $CONFIG['fixmystreet']['github_secret'];
+$msgs = array(
+    'skip' => 'Changelog/schema check skipped',
+    'pass-both' => 'Changelog and schema updates found',
+    'pass-changelog' => 'Changelog updates found',
+    'fail-migration' => 'No schema update found',
+    'fail-changelog' => 'No changelog update found',
+    'fail-all' => 'No changelog or schema update found',
+);
 
-$payload = file_get_contents('php://input');
+$states = array(
+    'skip' => 'neutral',
+    'pass-both' => 'success',
+    'pass-changelog' => 'success',
+    'fail-migration' => 'failure',
+    'fail-changelog' => 'failure',
+    'fail-all' => 'failure',
+);
 
-$signature_header = $_SERVER['HTTP_X_HUB_SIGNATURE'];
-$signature_calc = 'sha1=' . hash_hmac('sha1', $payload, $secret, false);
-if (!hash_equals($signature_header, $signature_calc)) {
-    exit("Signature did not match");
-}
-
-$data = json_decode($payload);
-if (!$data) {
-    exit("No JSON data");
-}
+$data = check_payload();
 
 if ($data->action == 'requested_action') {
     $url = $data->check_run->url;
     # Might in future need to check check_run->name,
     # And $data->requested_action->identifier == 'done'
-    $out = make_api_call($url, 'PATCH', array(
+    $out = make_api_call('fixmystreet', $url, 'PATCH', array(
         "conclusion" => "success",
         "completed_at" => date('c'),
     ));
@@ -65,7 +69,7 @@ if (want_to_check($pr)) {
     }
 
     print "PR $result\n";
-    set_changelog_status($pr, $result);
+    set_changelog_status('fixmystreet', 'changelog', $msgs, $states, $pr, $result);
     print "Status set\n";
 } else {
     print "Ignoring PR\n";
@@ -129,81 +133,7 @@ function set_template_check($pr, $templates) {
         );
     }
 
-    return create_check_run($pr, $data);
-}
-
-function set_changelog_status($pr, $result) {
-    $msgs = array(
-        'skip' => 'Changelog/schema check skipped',
-        'pass-both' => 'Changelog and schema updates found',
-        'pass-changelog' => 'Changelog updates found',
-        'fail-migration' => 'No schema update found',
-        'fail-changelog' => 'No changelog update found',
-        'fail-all' => 'No changelog or schema update found',
-    );
-
-    $states = array(
-        'skip' => 'neutral',
-        'pass-both' => 'success',
-        'pass-changelog' => 'success',
-        'fail-migration' => 'failure',
-        'fail-changelog' => 'failure',
-        'fail-all' => 'failure',
-    );
-
-    $data = array(
-        'name' => 'changelog',
-        "conclusion" => $states[$result],
-        "output" => array(
-            "title" => $msgs[$result],
-            "summary" => "",
-        ),
-    );
-
-    return create_check_run($pr, $data);
-}
-
-function create_check_run($pr, $data) {
-    $time = date('c');
-    $data['started_at'] = $time;
-    $data['completed_at'] = $time;
-    $data['status'] = "completed";
-    $data["head_sha"] = $pr->head->sha;
-    return make_api_call($pr->head->repo->url . "/check-runs", 'POST', $data);
-}
-
-function make_api_call($url, $method = "GET", $data = array()) {
-    global $CONFIG;
-
-    $token = trim(file_get_contents($CONFIG['fixmystreet']['token_filename']));
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
-    curl_setopt($ch, CURLOPT_USERAGENT, "mySociety FixMyStreet Chase Suite Bot");
-
-    curl_setopt($ch, CURLOPT_URL, $url);
-    if ($method == 'POST') {
-        curl_setopt($ch, CURLOPT_POST, true);
-    } elseif ($method != 'GET') {
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-    }
-    if ($data) {
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-    }
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        'Content-Type: application/json',
-        "Authorization: token $token",
-        "Accept: application/vnd.github.antiope-preview+json",
-    ));
-    $out = curl_exec($ch);
-    $out = json_decode($out);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    if ($code >= 400) {
-        print_r($out);
-    }
-    curl_close($ch);
-    return $out;
+    return create_check_run('fixmystreet', $pr, $data);
 }
 
 function collect_data() {
