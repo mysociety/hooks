@@ -10,44 +10,53 @@ from jwt import JWT, jwk_from_pem
 
 os.umask(0o377)
 
-script_dir = os.path.dirname(os.path.realpath(__file__))
-config_filename = script_dir + '/../conf/general.cfg'
-uid = os.stat(config_filename).st_uid
+def get_config():
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    config_filename = script_dir + '/../conf/general.cfg'
+    uid = os.stat(config_filename).st_uid
 
-config = configparser.ConfigParser()
-config.read(config_filename)
+    config = configparser.ConfigParser()
+    config.read(config_filename)
+    return config
 
-app_id = config['fixmystreet'].getint('github_app_id')
-inst_id = config['fixmystreet'].getint('github_installation_id')
-private_key_filename = config['fixmystreet']['private_key_filename']
-token_filename = config['fixmystreet']['token_filename']
+def main():
+    config = get_config()
+    for site in config.keys():
+        app_id = config[site].getint('github_app_id')
+        inst_id = config[site].getint('github_installation_id')
+        private_key_filename = config[site]['private_key_filename']
+        token_filename = config[site]['token_filename']
+        get_access_token(app_id, inst_id, private_key_filename, token_filename)
 
-t = int(time.time())
-message = {
-    'iss': app_id,
-    'iat': t,
-    'exp': t + 60,
-}
+def get_access_token(app_id, inst_id, private_key_filename, token_filename):
+    t = int(time.time())
+    message = {
+        'iss': app_id,
+        'iat': t,
+        'exp': t + 60,
+    }
 
-with open(private_key_filename, 'rb') as fh:
-    signing_key = jwk_from_pem(fh.read())
+    with open(private_key_filename, 'rb') as fh:
+        signing_key = jwk_from_pem(fh.read())
 
-jwt = JWT()
-compact_jws = jwt.encode(message, signing_key, 'RS256')
+    jwt = JWT()
+    compact_jws = jwt.encode(message, signing_key, 'RS256')
 
-token_url = 'https://api.github.com/app/installations/%d/access_tokens'
-req = urllib.request.Request(token_url % inst_id)
-req.method = 'POST'
-req.add_header('Authorization', 'Bearer ' + compact_jws)
-req.add_header('Accept', 'application/vnd.github.machine-man-preview+json')
-try:
-    r = urllib.request.urlopen(req).read().decode('utf-8')
-    j = json.loads(r)
-    token = j['token']
-    with open(token_filename, 'w') as fp:
-        fp.write(token)
-    os.chown(token_filename, uid, -1)
-except urllib.error.HTTPError as e:
-    print("ERROR")
-    print(e.headers)
-    print(e.read())
+    token_url = 'https://api.github.com/app/installations/%d/access_tokens'
+    req = urllib.request.Request(token_url % inst_id)
+    req.method = 'POST'
+    req.add_header('Authorization', 'Bearer ' + compact_jws)
+    req.add_header('Accept', 'application/vnd.github.machine-man-preview+json')
+    try:
+        r = urllib.request.urlopen(req).read().decode('utf-8')
+        j = json.loads(r)
+        token = j['token']
+        with open(token_filename, 'w') as fp:
+            fp.write(token)
+        os.chown(token_filename, uid, -1)
+    except urllib.error.HTTPError as e:
+        print("ERROR")
+        print(e.headers)
+        print(e.read())
+
+main()
