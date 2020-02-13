@@ -92,6 +92,15 @@ function diff_changes($pr) {
     $out['templates'] = array();
     foreach ($m[1] as $template) {
         $out['templates'][] = array(
+            "type" => 'web',
+            "name" => $template,
+            "cobrands" => $file_to_cobrands[$template],
+        );
+    }
+    preg_match_all('#diff --git a/templates/email/default/([^ ]*)#', $diff, $m);
+    foreach ($m[1] as $template) {
+        $out['templates'][] = array(
+            "type" => 'email',
             "name" => $template,
             "cobrands" => $file_to_cobrands[$template],
         );
@@ -105,9 +114,10 @@ function set_template_check($pr, $templates) {
     $title = count($templates) == 0 ? 'No core template changes' : count($templates) == 1 ? 'One core template change needs checking' : count($templates) . " core template changes need checking";
     $summary = '';
     foreach ($templates as $template) {
-        $summary .= "* [$template[name]](https://github.com/mysociety/$repo->name/blob/" . $pr->head->sha . "/templates/web/base/$template[name]):\n";
+        $default_cobrand = ($template['type'] == 'web') ? 'base' : 'default';
+        $summary .= "* [$template[name]](https://github.com/mysociety/$repo->name/blob/" . $pr->head->sha . "/templates/$template[type]/$default_cobrand/$template[name]):\n";
         foreach ($template['cobrands'] as $cobrand) {
-            $summary .= "  * [$cobrand[name]](https://github.com/mysociety/$cobrand[repo]/blob/master/templates/web/$cobrand[name]/$template[name])\n";
+            $summary .= "  * [$cobrand[name]](https://github.com/mysociety/$cobrand[repo]/blob/master/templates/$template[type]/$cobrand[name]/$template[name])\n";
         }
     }
     $data = array( 
@@ -220,6 +230,18 @@ function collect_data() {
             $f = trim($f);
             if (!$f) continue;
             preg_match("#^$dir/(.*?)/templates/web/([^/]*)/(.*)#", $f, $m);
+            $file_to_cobrands[$m[3]][] = array("repo" => $m[1], "name" => $m[2]);
+        }
+    }
+    $cobrands = glob("$dir/*/templates/email/*");
+    foreach ($cobrands as $cobrand) {
+        if ($cobrand == "$dir/fixmystreet/templates/email/default") continue;
+        $list = `find $cobrand -type f`;
+        $list = explode("\n", $list);
+        foreach ($list as $f) {
+            $f = trim($f);
+            if (!$f) continue;
+            preg_match("#^$dir/(.*?)/templates/email/([^/]*)/(.*)#", $f, $m);
             $file_to_cobrands[$m[3]][] = array("repo" => $m[1], "name" => $m[2]);
         }
     }
