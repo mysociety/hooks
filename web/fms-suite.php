@@ -76,7 +76,7 @@ function want_to_check($pr) {
 }
 
 function want_to_skip($pr) {
-    return preg_match('#\[skip changelog\]#', $pr->body);
+    return preg_match('#\[skip changelog\]#i', $pr->body);
 }
 
 function diff_changes($pr) {
