@@ -58,6 +58,7 @@ foreach ($repos as $repo_info) {
     #$cherry = explode("\n", $cherry);
 
     # List of merge commits on staging, not on master
+    `git -C $repo_dir/$repo fetch`;
     $log = `git -C $repo_dir/$repo log --merges origin/$staging_branch --not origin/master`;
     $log = explode("\n", $log);
     $branches = [];
@@ -73,6 +74,7 @@ foreach ($repos as $repo_info) {
             }
         }
     }
+    $branches = array_unique($branches);
 
     $data = make_api_call("https://api.github.com/repos/mysociety/$repo/pulls");
 
