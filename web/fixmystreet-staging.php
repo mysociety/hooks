@@ -57,8 +57,18 @@ foreach ($repos as $repo_info) {
     #$cherry = `git -C $repo_dir/$repo cherry origin/master origin/$staging_branch`;
     #$cherry = explode("\n", $cherry);
 
-    # List of merge commits on staging, not on master
     `git -C $repo_dir/$repo fetch`;
+
+    $main_branches = [];
+    exec("git -C $repo_dir/$repo log origin/master --format='%D'", $output);
+    foreach ($output as $line) {
+        if ($line) {
+            $line = preg_replace('#^origin/#', '', $line);
+            $main_branches[] = $line;
+        }
+    }
+
+    # List of merge commits on staging, not on master
     $log = `git -C $repo_dir/$repo log --merges origin/$staging_branch --not origin/master`;
     $log = explode("\n", $log);
     $branches = [];
@@ -67,14 +77,12 @@ foreach ($repos as $repo_info) {
             preg_match_all("#'(.*?)'#", $m[1], $mm);
             foreach ($mm[1] as $branch) {
                 $branch = preg_replace('#^origin/#', '', $branch);
-                exec("git -C $repo_dir/$repo for-each-ref --contains origin/$branch --format '%(refname:short)' | grep -q master", $output, $result_code);
-                if ($result_code) {
-                    $branches[] = $branch;
-                }
+                if (in_array($branch, $main_branches)) continue;
+                if (in_array($branch, $branches)) continue;
+                $branches[] = $branch;
             }
         }
     }
-    $branches = array_unique($branches);
 
     $data = make_api_call("https://api.github.com/repos/mysociety/$repo/pulls");
 
