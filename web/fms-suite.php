@@ -6,8 +6,8 @@ $secret = $CONFIG['fixmystreet']['github_secret'];
 
 $payload = file_get_contents('php://input');
 
-$signature_header = $_SERVER['HTTP_X_HUB_SIGNATURE'];
-$signature_calc = 'sha1=' . hash_hmac('sha1', $payload, $secret, false);
+$signature_header = $_SERVER['HTTP_X_HUB_SIGNATURE_256'];
+$signature_calc = 'sha256=' . hash_hmac('sha256', $payload, $secret, false);
 if (!hash_equals($signature_header, $signature_calc)) {
     exit("Signature did not match");
 }
